@@ -1,3 +1,4 @@
+
 import type { FastifyInstance } from 'fastify'
 import QRCode from 'qrcode'
 import { config } from '../../config.js'
@@ -22,6 +23,7 @@ import { registerBackupRoutes } from './backup.js'
 
 export function registerRoutes(app: FastifyInstance) {
   registerBackupRoutes(app)
+
   // --- Public: login ---
   app.get('/login', async (req, reply) => {
     if (req.session.authenticated) {
@@ -50,10 +52,7 @@ export function registerRoutes(app: FastifyInstance) {
     return reply.redirect('/login?error=1')
   })
 
-  // --- Protected: main page ---
-
   // --- Protected: complaints API ---
-
   app.get('/api/complaints', { preHandler: requireAuthApi }, async (_req, reply) => {
     if (!isAccountDbReady()) {
       return reply.status(503).send({ error: 'Not connected' })
@@ -85,23 +84,26 @@ export function registerRoutes(app: FastifyInstance) {
     }
 
     const updated = updateComplaintStatus(
-  complaintId,
-  status as typeof complaintStatuses[number],
-)
+      complaintId,
+      status as typeof complaintStatuses[number],
+    )
 
-if (!updated) {
-  return reply.status(404).send({ error: 'Complaint not found' })
-}
+    if (!updated) {
+      return reply.status(404).send({ error: 'Complaint not found' })
+    }
 
-return reply.send({ ok: true })
+    return reply.send({ ok: true })
   })
 
+  // --- Protected: main page ---
   app.get('/', { preHandler: requireAuth }, async (req, reply) => {
     generateCsrf(req)
     const state = getConnectionState()
-    if (state === 'open') {
+
+    if (state === 'open' || process.env.DASHBOARD_ONLY === 'true') {
       return sendPage(reply, 'dashboard.html', req)
     }
+
     return sendPage(reply, 'connection.html', req)
   })
 
@@ -109,6 +111,7 @@ return reply.send({ ok: true })
     if (!verifyCsrf(req)) {
       return reply.status(403).send('Invalid CSRF token')
     }
+
     await req.session.destroy()
     return reply.redirect('/login')
   })
@@ -117,12 +120,14 @@ return reply.send({ ok: true })
     if (!verifyCsrf(req)) {
       return reply.status(403).send('Invalid CSRF token')
     }
+
     try {
       const sock = getSock()
       await sock.logout('User requested disconnect')
     } catch {
       // not connected
     }
+
     return reply.redirect('/')
   })
 
@@ -143,13 +148,16 @@ return reply.send({ ok: true })
     if (!verifyCsrf(req)) {
       return reply.status(403).send({ error: 'Invalid CSRF token' })
     }
+
     const body = req.body as Record<string, string>
     const allowed = ['project_name', 'page_size']
+
     for (const key of allowed) {
       if (key in body && typeof body[key] === 'string') {
         setSetting(key, body[key])
       }
     }
+
     return reply.send({ ok: true })
   })
 
@@ -158,6 +166,7 @@ return reply.send({ ok: true })
     if (!isAccountDbReady()) {
       return reply.send({ groups: [] })
     }
+
     const groups = getAllGroups()
     GroupRecord.populateAllSummaries(groups)
     return reply.send({ groups: groups.map(g => g.toJSON()) })
@@ -172,8 +181,10 @@ return reply.send({ ok: true })
     if (!isAccountDbReady()) {
       return reply.status(503).send({ error: 'Not connected' })
     }
+
     const { jid } = req.params as { jid: string }
     const group = getGroup(jid)
+
     if (!group) {
       return reply.status(404).send({ error: 'Group not found' })
     }
@@ -183,14 +194,18 @@ return reply.send({ ok: true })
     const activityMap = new Map(userActivity.map(a => [a.userJid, a]))
 
     let botUserJid: string | null = null
+
     try {
       const sock = getSock()
       if (sock.user?.lid) botUserJid = jidNormalizedUser(sock.user.lid)
       else if (sock.user?.id) botUserJid = jidNormalizedUser(sock.user.id)
-    } catch { /* not connected */ }
+    } catch {
+      // not connected
+    }
 
     const enrichedMembers = members.map(m => {
       const activity = activityMap.get(m.userJid)
+
       return {
         ...m,
         isBot: botUserJid ? m.userJid === botUserJid : false,
@@ -217,10 +232,16 @@ return reply.send({ ok: true })
   })
 
   app.get('/api/users/:jid', { preHandler: requireAuthApi }, async (req, reply) => {
-    if (!isAccountDbReady()) return reply.status(503).send({ error: 'Not connected' })
+    if (!isAccountDbReady()) {
+      return reply.status(503).send({ error: 'Not connected' })
+    }
+
     const { jid } = req.params as { jid: string }
     const user = getUser(jid)
-    if (!user) return reply.status(404).send({ error: 'User not found' })
+
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' })
+    }
 
     const memberships = getUserGroupMemberships(jid)
     const activityData = getUserActivityPerGroup(jid, 30)
@@ -246,9 +267,15 @@ return reply.send({ ok: true })
 
     // Add parent communities as header-only grouping rows if user is not directly in them
     const addedCommunities = new Set<string>()
+
     for (const m of memberships) {
-      if (m.parentCommunityJid && !membershipGroupJids.has(m.parentCommunityJid) && !addedCommunities.has(m.parentCommunityJid)) {
+      if (
+        m.parentCommunityJid &&
+        !membershipGroupJids.has(m.parentCommunityJid) &&
+        !addedCommunities.has(m.parentCommunityJid)
+      ) {
         const g = groupMap.get(m.parentCommunityJid)
+
         if (g) {
           rows.push({
             groupJid: g.jid,
@@ -263,6 +290,7 @@ return reply.send({ ok: true })
             total: 0,
             lastActivity: null,
           })
+
           addedCommunities.add(g.jid)
         }
       }
@@ -277,6 +305,7 @@ return reply.send({ ok: true })
     const user = state === 'open' ? getBotUser() : null
 
     let qrDataUrl: string | null = null
+
     if (qr) {
       qrDataUrl = await QRCode.toDataURL(qr, { width: 300 })
     }
