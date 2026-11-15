@@ -84,8 +84,12 @@ Identify genuine complaints about facility management, maintenance,
 security, housekeeping, lifts, parking, noise, water, electrical,
 plumbing, civil works, or common areas.
 
-Do not classify greetings, general conversations, announcements,
-questions without a reported problem, or casual suggestions as complaints.
+Do not classify greetings, thank-you messages, festival wishes,
+general conversations, announcements, forwarded messages, questions
+without a reported problem, or casual suggestions as complaints.
+
+Do not create a new complaint for a duplicate report of an already
+reported issue unless the message provides a meaningful new update.
 
 A message reporting an existing problem is a complaint even if it is polite.
 
