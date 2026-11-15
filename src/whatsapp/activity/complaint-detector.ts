@@ -105,8 +105,16 @@ If it is not a genuine complaint, set isComplaint to false.
 
   const result = JSON.parse(content) as ComplaintClassification
 
+    if (typeof result.isComplaint !== 'boolean') {
+    throw new Error('OpenAI returned an invalid complaint classification')
+  }
+
+  // Ignore ordinary messages before validating complaint-specific fields.
+  if (!result.isComplaint) {
+    return null
+  }
+
   if (
-    typeof result.isComplaint !== 'boolean' ||
     !categories.includes(result.category) ||
     !priorities.includes(result.priority) ||
     typeof result.summary !== 'string' ||
