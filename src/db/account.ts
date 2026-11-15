@@ -100,6 +100,33 @@ export function initAccountDb(phone: string) {
     CREATE INDEX IF NOT EXISTS idx_activity_group_ts ON group_activity_log(group_jid, timestamp);
     CREATE INDEX IF NOT EXISTS idx_activity_user_group ON group_activity_log(user_jid, group_jid);
     CREATE INDEX IF NOT EXISTS idx_activity_parent ON group_activity_log(parent_id);
+    CREATE TABLE IF NOT EXISTS complaints (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_group_jid TEXT NOT NULL,
+  source_message_id TEXT NOT NULL,
+  resident_jid TEXT NOT NULL,
+  source_timestamp INTEGER NOT NULL,
+  message_text TEXT NOT NULL,
+  category TEXT NOT NULL,
+  priority TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  flat_number TEXT,
+  confidence INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  notification_status TEXT NOT NULL DEFAULT 'pending',
+  notification_error TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_complaints_source
+ON complaints(source_group_jid, source_message_id);
+
+CREATE INDEX IF NOT EXISTS idx_complaints_status
+ON complaints(status);
+
+CREATE INDEX IF NOT EXISTS idx_complaints_created
+ON complaints(created_at);
   `)
 
   // Migrations: drop columns that are no longer needed
