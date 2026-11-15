@@ -1,10 +1,13 @@
 
 import OpenAI from 'openai'
 import { config } from '../../config.js'
-import type {
-  ComplaintCategory,
-  ComplaintPriority,
+import {
+  complaintCategories,
+  complaintPriorities,
 } from '../../db/schema.js'
+
+type ComplaintCategory = typeof complaintCategories[number]
+type ComplaintPriority = typeof complaintPriorities[number]
 
 export interface ComplaintClassification {
   isComplaint: boolean
@@ -15,26 +18,8 @@ export interface ComplaintClassification {
   confidence: number
 }
 
-const categories: ComplaintCategory[] = [
-  'plumbing',
-  'electrical',
-  'housekeeping',
-  'security',
-  'lift',
-  'parking',
-  'noise',
-  'civil',
-  'water_supply',
-  'common_area',
-  'other',
-]
-
-const priorities: ComplaintPriority[] = [
-  'low',
-  'medium',
-  'high',
-  'urgent',
-]
+const categories = complaintCategories
+const priorities = complaintPriorities
 
 let openai: OpenAI | null = null
 
