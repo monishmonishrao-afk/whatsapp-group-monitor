@@ -1,11 +1,14 @@
+
 import { eq, and, desc, sql, gte, inArray } from 'drizzle-orm'
 import { getAccountDb } from '../account.js'
-import { groupActivityLog } from '../schema.js'
+import { groupActivityLog, complaints } from '../schema.js'
+import type { NewComplaint, ComplaintRow } from '../schema.js'
 import type { ActivityRecord } from '../../whatsapp/activity/record.js'
 
 /** Insert activity record. Returns true if inserted, false if duplicate. */
 export function insertActivity(record: ActivityRecord): boolean {
   const db = getAccountDb()
+
   try {
     db.insert(groupActivityLog).values({
       groupJid: record.groupJid,
@@ -18,6 +21,7 @@ export function insertActivity(record: ActivityRecord): boolean {
       timestamp: record.timestamp,
       createdAt: new Date(),
     }).run()
+
     return true
   } catch (err: any) {
     if (err?.code === 'SQLITE_CONSTRAINT_UNIQUE') return false
@@ -25,9 +29,10 @@ export function insertActivity(record: ActivityRecord): boolean {
   }
 }
 
-/** Get a creation record (poll_create or event_create) by message ID */
+/** Get a creation record by message ID. */
 export function getCreationRecord(groupJid: string, messageId: string) {
   const db = getAccountDb()
+
   return db.select()
     .from(groupActivityLog)
     .where(and(
@@ -37,10 +42,14 @@ export function getCreationRecord(groupJid: string, messageId: string) {
     .get()
 }
 
-/** Count activity events per group since a given timestamp */
-export function getGroupActivityCounts(groupJids: string[], sinceTimestamp: number): Map<string, number> {
+/** Count activity events per group since a given timestamp. */
+export function getGroupActivityCounts(
+  groupJids: string[],
+  sinceTimestamp: number,
+): Map<string, number> {
   const result = new Map<string, number>()
   if (groupJids.length === 0) return result
+
   const db = getAccountDb()
   const rows = db.select({
     groupJid: groupActivityLog.groupJid,
@@ -53,14 +62,16 @@ export function getGroupActivityCounts(groupJids: string[], sinceTimestamp: numb
     ))
     .groupBy(groupActivityLog.groupJid)
     .all()
+
   for (const row of rows) result.set(row.groupJid, row.cnt)
   return result
 }
 
-/** Get most recent activity timestamp per group */
+/** Get most recent activity timestamp per group. */
 export function getGroupLastActivity(groupJids: string[]): Map<string, number> {
   const result = new Map<string, number>()
   if (groupJids.length === 0) return result
+
   const db = getAccountDb()
   const rows = db.select({
     groupJid: groupActivityLog.groupJid,
@@ -70,16 +81,19 @@ export function getGroupLastActivity(groupJids: string[]): Map<string, number> {
     .where(inArray(groupActivityLog.groupJid, groupJids))
     .groupBy(groupActivityLog.groupJid)
     .all()
+
   for (const row of rows) {
     if (row.lastTs) result.set(row.groupJid, row.lastTs)
   }
+
   return result
 }
 
-/** Per-group activity breakdown for a user in the last N days */
+/** Per-group activity breakdown for a user in the last N days. */
 export function getUserActivityPerGroup(userJid: string, sinceDays: number) {
   const db = getAccountDb()
   const sinceTs = Math.floor(Date.now() / 1000) - (sinceDays * 86400)
+
   return db.select({
     groupJid: groupActivityLog.groupJid,
     total: sql<number>`count(*)`.as('total'),
@@ -96,10 +110,11 @@ export function getUserActivityPerGroup(userJid: string, sinceDays: number) {
     .all()
 }
 
-/** Per-user activity breakdown for a group in the last N days */
+/** Per-user activity breakdown for a group in the last N days. */
 export function getGroupUserActivity(groupJid: string, sinceDays: number) {
   const db = getAccountDb()
   const sinceTs = Math.floor(Date.now() / 1000) - (sinceDays * 86400)
+
   return db.select({
     userJid: groupActivityLog.userJid,
     total: sql<number>`count(*)`.as('total'),
@@ -115,4 +130,44 @@ export function getGroupUserActivity(groupJid: string, sinceDays: number) {
     .groupBy(groupActivityLog.userJid)
     .orderBy(desc(sql`total`))
     .all()
+}
+
+/** Save a complaint. Returns false if this message was already recorded. */
+export function insertComplaint(complaint: NewComplaint): boolean {
+  const db = getAccountDb()
+
+  try {
+    db.insert(complaints).values(complaint).run()
+    return true
+  } catch (err: any) {
+    if (err?.code === 'SQLITE_CONSTRAINT_UNIQUE') return false
+    throw err
+  }
+}
+
+/** Get the latest complaints for the dashboard. */
+export function getRecentComplaints(limit = 100): ComplaintRow[] {
+  const db = getAccountDb()
+
+  return db.select()
+    .from(complaints)
+    .orderBy(desc(complaints.createdAt))
+    .limit(limit)
+    .all()
+}
+
+/** Update a complaint's status. */
+export function updateComplaintStatus(
+  id: number,
+  status: ComplaintRow['status'],
+): void {
+  const db = getAccountDb()
+
+  db.update(complaints)
+    .set({
+      status,
+      updatedAt: new Date(),
+    })
+    .where(eq(complaints.id, id))
+    .run()
 }
