@@ -100,6 +100,7 @@ export function initAccountDb(phone: string) {
     CREATE INDEX IF NOT EXISTS idx_activity_group_ts ON group_activity_log(group_jid, timestamp);
     CREATE INDEX IF NOT EXISTS idx_activity_user_group ON group_activity_log(user_jid, group_jid);
     CREATE INDEX IF NOT EXISTS idx_activity_parent ON group_activity_log(parent_id);
+    
     CREATE TABLE IF NOT EXISTS complaints (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   source_group_jid TEXT NOT NULL,
