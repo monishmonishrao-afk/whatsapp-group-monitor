@@ -1,4 +1,11 @@
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core'
+import {
+  sqliteTable,
+  text,
+  integer,
+  primaryKey,
+  uniqueIndex,
+  index,
+} from 'drizzle-orm/sqlite-core'
 
 // --- Shared DB (monitor.db) ---
 
@@ -75,3 +82,89 @@ export const groupActivityLog = sqliteTable('group_activity_log', {
 })
 
 export type GroupActivityRow = typeof groupActivityLog.$inferSelect
+
+
+export const complaintCategories = [
+  'plumbing',
+  'electrical',
+  'housekeeping',
+  'security',
+  'lift',
+  'parking',
+  'noise',
+  'civil',
+  'water_supply',
+  'common_area',
+  'other',
+] as const
+
+export const complaintPriorities = [
+  'low',
+  'medium',
+  'high',
+  'urgent',
+] as const
+
+export const complaintStatuses = [
+  'open',
+  'in_progress',
+  'resolved',
+  'closed',
+] as const
+
+export const complaints = sqliteTable(
+  'complaints',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    sourceGroupJid: text('source_group_jid').notNull(),
+    sourceMessageId: text('source_message_id').notNull(),
+    residentJid: text('resident_jid').notNull(),
+
+    sourceTimestamp: integer('source_timestamp').notNull(),
+    messageText: text('message_text').notNull(),
+
+    category: text('category', {
+      enum: complaintCategories,
+    }).notNull(),
+
+    priority: text('priority', {
+      enum: complaintPriorities,
+    }).notNull(),
+
+    summary: text('summary').notNull(),
+    flatNumber: text('flat_number'),
+
+    confidence: integer('confidence').notNull(),
+
+    status: text('status', {
+      enum: complaintStatuses,
+    }).notNull().default('open'),
+
+    notificationStatus: text('notification_status', {
+      enum: ['pending', 'sent', 'failed', 'disabled'],
+    }).notNull().default('pending'),
+
+    notificationError: text('notification_error'),
+
+    createdAt: integer('created_at', {
+      mode: 'timestamp_ms',
+    }).notNull().$defaultFn(() => new Date()),
+
+    updatedAt: integer('updated_at', {
+      mode: 'timestamp_ms',
+    }).notNull().$defaultFn(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('idx_complaints_source').on(
+      table.sourceGroupJid,
+      table.sourceMessageId,
+    ),
+    index('idx_complaints_status').on(table.status),
+    index('idx_complaints_created').on(table.createdAt),
+  ],
+)
+
+export type ComplaintRow = typeof complaints.$inferSelect
+export type NewComplaint = typeof complaints.$inferInsert
+
