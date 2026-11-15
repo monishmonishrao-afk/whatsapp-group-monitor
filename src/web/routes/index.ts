@@ -12,7 +12,12 @@ import { isAccountDbReady } from '../../db/account.js'
 import { jidNormalizedUser } from 'baileys'
 import { getUser } from '../../db/queries/users.js'
 import { getUserGroupMemberships } from '../../db/queries/members.js'
-import { getUserActivityPerGroup } from '../../db/queries/activity.js'
+import {
+  getUserActivityPerGroup,
+  getRecentComplaints,
+  updateComplaintStatus,
+} from '../../db/queries/activity.js'
+import { complaintStatuses } from '../../db/schema.js'
 import { registerBackupRoutes } from './backup.js'
 
 export function registerRoutes(app: FastifyInstance) {
@@ -46,6 +51,47 @@ export function registerRoutes(app: FastifyInstance) {
   })
 
   // --- Protected: main page ---
+
+  // --- Protected: complaints API ---
+
+  app.get('/api/complaints', { preHandler: requireAuthApi }, async (_req, reply) => {
+    if (!isAccountDbReady()) {
+      return reply.status(503).send({ error: 'Not connected' })
+    }
+
+    const complaints = getRecentComplaints(200)
+    return reply.send({ complaints })
+  })
+
+  app.post('/api/complaints/:id/status', { preHandler: requireAuthApi }, async (req, reply) => {
+    if (!verifyCsrf(req)) {
+      return reply.status(403).send({ error: 'Invalid CSRF token' })
+    }
+
+    if (!isAccountDbReady()) {
+      return reply.status(503).send({ error: 'Not connected' })
+    }
+
+    const { id } = req.params as { id: string }
+    const complaintId = Number(id)
+    const { status } = req.body as { status?: string }
+
+    if (!Number.isInteger(complaintId) || complaintId <= 0) {
+      return reply.status(400).send({ error: 'Invalid complaint ID' })
+    }
+
+    if (!status || !complaintStatuses.includes(status as typeof complaintStatuses[number])) {
+      return reply.status(400).send({ error: 'Invalid complaint status' })
+    }
+
+    updateComplaintStatus(
+      complaintId,
+      status as typeof complaintStatuses[number],
+    )
+
+    return reply.send({ ok: true })
+  })
+
   app.get('/', { preHandler: requireAuth }, async (req, reply) => {
     generateCsrf(req)
     const state = getConnectionState()

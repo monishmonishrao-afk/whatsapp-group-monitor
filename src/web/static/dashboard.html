@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,28 +7,120 @@
   <title>{{PROJECT_NAME}}</title>
   <meta name="csrf-token" content="{{CSRF_TOKEN}}" />
   <link rel="stylesheet" href="/static/shared.css" />
+
   <style>
-    .content { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+    .content { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+    h2 { font-size: 1.1rem; color: #1a1a1a; margin: 1.5rem 0 1rem; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .stat-label { color: #667781; font-size: .85rem; }
+    .stat-value { font-size: 1.7rem; font-weight: 700; margin-top: .4rem; }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-bottom: 1rem;
+    }
+    select, button {
+      padding: .55rem .75rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: white;
+      font-size: .9rem;
+    }
+    button { cursor: pointer; }
+    button:hover { background: #f0f2f5; }
+
+    .complaint-list {
+      display: grid;
+      gap: 1rem;
+    }
+    .complaint {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      border-left: 4px solid #9ca3af;
+    }
+    .complaint.urgent { border-left-color: #dc2626; }
+    .complaint.high { border-left-color: #ea580c; }
+    .complaint.medium { border-left-color: #d97706; }
+    .complaint.low { border-left-color: #16a34a; }
+
+    .complaint-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .complaint-title { font-weight: 700; color: #1a1a1a; }
+    .complaint-meta { color: #667781; font-size: .82rem; margin-top: .35rem; }
+    .complaint-summary { margin: .8rem 0; color: #333; }
+    .original-message {
+      background: #f8f9fa;
+      padding: .75rem;
+      border-radius: 6px;
+      font-size: .9rem;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .complaint-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-top: 1rem;
+    }
+    .tags { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .tag {
+      display: inline-block;
+      padding: .25rem .55rem;
+      border-radius: 5px;
+      font-size: .75rem;
+      font-weight: 600;
+      background: #f0f2f5;
+      color: #475569;
+    }
+    .tag.urgent, .tag.high { background: #fee2e2; color: #b91c1c; }
+    .tag.medium { background: #fef3c7; color: #92400e; }
+    .tag.low { background: #dcfce7; color: #166534; }
+
+    .status-control { display: flex; align-items: center; gap: .5rem; }
+    .status-control select { min-width: 130px; }
+    .loading, .empty { text-align: center; padding: 2rem; color: #667781; }
+    .error { color: #b91c1c; }
+
     table {
       width: 100%;
       border-collapse: collapse;
       background: white;
       border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
     }
-    th, td { padding: 0.75rem 1rem; text-align: left; }
-    th { background: #f8f9fa; color: #667781; font-weight: 600; font-size: 0.85rem; }
-    td { border-top: 1px solid #eee; color: #1a1a1a; font-size: 0.9rem; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    th.num { text-align: right; }
+    th, td { padding: .75rem 1rem; text-align: left; }
+    th { background: #f8f9fa; color: #667781; font-weight: 600; font-size: .85rem; }
+    td { border-top: 1px solid #eee; color: #1a1a1a; font-size: .9rem; }
+    td.num, th.num { text-align: right; }
     .badge {
       display: inline-block;
-      padding: 0 0.4rem;
+      padding: 0 .4rem;
       border-radius: 4px;
-      font-size: 0.75rem;
+      font-size: .75rem;
       font-weight: 600;
-      vertical-align: baseline;
     }
     .badge-community { background: #e8f5e9; color: #2e7d32; }
     .badge-participant { background: #e3f2fd; color: #1565c0; }
@@ -37,87 +130,340 @@
     .muted { color: #999; }
     a.group-link { color: #1a1a1a; text-decoration: none; }
     a.group-link:hover { text-decoration: underline; }
-    .loading { text-align: center; padding: 2rem; color: #667781; }
+
+    @media (max-width: 700px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .content { margin-top: 1rem; }
+      .complaint-bottom { align-items: flex-start; }
+      .status-control { width: 100%; }
+      .status-control select { flex: 1; }
+      table { display: block; overflow-x: auto; }
+    }
   </style>
 </head>
+
 <body>
   {{> header}}
+
   <div class="content">
     {{> status-bar}}
-    <h2 style="font-size: 1.1rem; color: #1a1a1a;">Groups</h2>
-    <div id="groups"><p class="loading">Loading...</p></div>
+
+    <h2>Resident Complaints</h2>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Total complaints</div>
+        <div class="stat-value" id="total-count">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Open complaints</div>
+        <div class="stat-value" id="open-count">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Urgent complaints</div>
+        <div class="stat-value" id="urgent-count">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Resolved / closed</div>
+        <div class="stat-value" id="resolved-count">0</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <select id="status-filter">
+        <option value="">All statuses</option>
+        <option value="open">Open</option>
+        <option value="in_progress">In progress</option>
+        <option value="resolved">Resolved</option>
+        <option value="closed">Closed</option>
+      </select>
+
+      <select id="priority-filter">
+        <option value="">All priorities</option>
+        <option value="urgent">Urgent</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+
+      <select id="category-filter">
+        <option value="">All categories</option>
+        <option value="plumbing">Plumbing</option>
+        <option value="electrical">Electrical</option>
+        <option value="housekeeping">Housekeeping</option>
+        <option value="security">Security</option>
+        <option value="lift">Lift</option>
+        <option value="parking">Parking</option>
+        <option value="noise">Noise</option>
+        <option value="civil">Civil</option>
+        <option value="water_supply">Water supply</option>
+        <option value="common_area">Common area</option>
+        <option value="other">Other</option>
+      </select>
+
+      <button id="refresh-btn" type="button">Refresh complaints</button>
+    </div>
+
+    <div id="complaints">
+      <p class="loading">Loading complaints...</p>
+    </div>
+
+    <h2>WhatsApp Groups</h2>
+    <div id="groups">
+      <p class="loading">Loading groups...</p>
+    </div>
   </div>
+
   <script>
+    let allComplaints = []
+
+    const csrfToken =
+      document.querySelector('meta[name="csrf-token"]').content
+
+    function escHtml(value) {
+      const div = document.createElement('div')
+      div.textContent = value == null ? '' : String(value)
+      return div.innerHTML
+    }
+
+    function formatDate(timestamp, milliseconds = false) {
+      if (!timestamp) return '-'
+      const date = new Date(milliseconds ? timestamp : timestamp * 1000)
+      return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+    }
+
+    function pretty(value) {
+      return String(value || '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
+    }
+
+    function renderStats() {
+      document.getElementById('total-count').textContent = allComplaints.length
+      document.getElementById('open-count').textContent =
+        allComplaints.filter(c => c.status === 'open' || c.status === 'in_progress').length
+      document.getElementById('urgent-count').textContent =
+        allComplaints.filter(c => c.priority === 'urgent' && c.status !== 'resolved' && c.status !== 'closed').length
+      document.getElementById('resolved-count').textContent =
+        allComplaints.filter(c => c.status === 'resolved' || c.status === 'closed').length
+    }
+
+    function renderComplaints() {
+      const status = document.getElementById('status-filter').value
+      const priority = document.getElementById('priority-filter').value
+      const category = document.getElementById('category-filter').value
+
+      const filtered = allComplaints.filter(c =>
+        (!status || c.status === status) &&
+        (!priority || c.priority === priority) &&
+        (!category || c.category === category)
+      )
+
+      const container = document.getElementById('complaints')
+
+      if (!filtered.length) {
+        container.innerHTML = '<p class="empty">No complaints match these filters.</p>'
+        return
+      }
+
+      container.innerHTML = '<div class="complaint-list">' +
+        filtered.map(c => `
+          <article class="complaint ${escHtml(c.priority)}">
+            <div class="complaint-top">
+              <div>
+                <div class="complaint-title">
+                  Complaint #${escHtml(c.id)} — Flat ${escHtml(c.flatNumber || 'Not provided')}
+                </div>
+                <div class="complaint-meta">
+                  Received: ${escHtml(formatDate(c.sourceTimestamp))}
+                </div>
+              </div>
+              <div class="tags">
+                <span class="tag ${escHtml(c.priority)}">${escHtml(pretty(c.priority))} priority</span>
+                <span class="tag">${escHtml(pretty(c.category))}</span>
+              </div>
+            </div>
+
+            <div class="complaint-summary">
+              <strong>AI summary:</strong> ${escHtml(c.summary)}
+            </div>
+
+            <div class="original-message">
+              <strong>Resident message:</strong>
+              ${escHtml(c.messageText)}
+            </div>
+
+            <div class="complaint-meta">
+              Confidence: ${escHtml(c.confidence)}%
+              &nbsp; | &nbsp;
+              Notification: ${escHtml(pretty(c.notificationStatus))}
+              ${c.notificationError ? ' — ' + escHtml(c.notificationError) : ''}
+            </div>
+
+            <div class="complaint-bottom">
+              <div class="complaint-meta">
+                Last updated: ${escHtml(formatDate(c.updatedAt, true))}
+              </div>
+
+              <div class="status-control">
+                <label for="status-${escHtml(c.id)}">Status:</label>
+                <select id="status-${escHtml(c.id)}"
+                  onchange="updateStatus(${Number(c.id)}, this.value)">
+                  ${['open', 'in_progress', 'resolved', 'closed'].map(s =>
+                    `<option value="${s}" ${c.status === s ? 'selected' : ''}>${pretty(s)}</option>`
+                  ).join('')}
+                </select>
+              </div>
+            </div>
+          </article>
+        `).join('') +
+        '</div>'
+    }
+
+    async function loadComplaints() {
+      const container = document.getElementById('complaints')
+      container.innerHTML = '<p class="loading">Loading complaints...</p>'
+
+      try {
+        const res = await fetch('/api/complaints')
+
+        if (res.status === 401) {
+          window.location.href = '/login'
+          return
+        }
+
+        if (!res.ok) throw new Error('Could not load complaints')
+
+        const data = await res.json()
+        allComplaints = data.complaints || []
+
+        renderStats()
+        renderComplaints()
+      } catch (error) {
+        container.innerHTML = '<p class="empty error">Failed to load complaints. Please refresh.</p>'
+      }
+    }
+
+    async function updateStatus(id, status) {
+      try {
+        const res = await fetch('/api/complaints/' + encodeURIComponent(id) + '/status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken,
+          },
+          body: JSON.stringify({ status }),
+        })
+
+        if (res.status === 401) {
+          window.location.href = '/login'
+          return
+        }
+
+        if (!res.ok) throw new Error('Status update failed')
+
+        const complaint = allComplaints.find(c => c.id === id)
+        if (complaint) complaint.status = status
+
+        renderStats()
+        renderComplaints()
+      } catch (error) {
+        alert('Could not update complaint status. Please try again.')
+        await loadComplaints()
+      }
+    }
+
     async function loadGroups() {
       try {
-        const res = await fetch('/api/groups');
-        if (res.status === 401) { window.location.href = '/login'; return; }
-        const data = await res.json();
-        const groups = data.groups || [];
-        if (groups.length === 0) {
-          document.getElementById('groups').innerHTML = '<p class="loading">No groups found</p>';
-          return;
+        const res = await fetch('/api/groups')
+
+        if (res.status === 401) {
+          window.location.href = '/login'
+          return
         }
 
-        const sortName = (a, b) => a.name.localeCompare(b.name);
-        const childMap = {};
+        const data = await res.json()
+        const groups = data.groups || []
+
+        if (!groups.length) {
+          document.getElementById('groups').innerHTML =
+            '<p class="loading">No groups found</p>'
+          return
+        }
+
+        const sortName = (a, b) => a.name.localeCompare(b.name)
+        const childMap = {}
+
         for (const g of groups) {
           if (g.parentCommunityJid) {
-            if (!childMap[g.parentCommunityJid]) childMap[g.parentCommunityJid] = [];
-            childMap[g.parentCommunityJid].push(g);
+            if (!childMap[g.parentCommunityJid]) childMap[g.parentCommunityJid] = []
+            childMap[g.parentCommunityJid].push(g)
           }
         }
-        for (const jid in childMap) childMap[jid].sort(sortName);
-        const topLevel = groups.filter(g => !g.parentCommunityJid).sort(sortName);
 
-        let html = '<table><thead><tr><th>Name</th><th class="num">Members</th><th class="num">Activity (30d)</th><th>Last activity</th><th>Your role</th></tr></thead><tbody>';
+        for (const jid in childMap) childMap[jid].sort(sortName)
+
+        const topLevel = groups.filter(g => !g.parentCommunityJid).sort(sortName)
+
+        let html = '<table><thead><tr><th>Name</th><th class="num">Members</th><th class="num">Activity (30d)</th><th>Last activity</th><th>Your role</th></tr></thead><tbody>'
 
         function addRow(g, indent) {
-          const nameText = escHtml(g.name);
-          const link = '<a class="group-link" href="/group/' + encodeURIComponent(g.jid) + '">' + nameText + '</a>';
-          const name = (indent ? '<span class="indent">' : '') + link
-            + (g.isCommunity ? ' <span class="badge badge-community">community</span>' : '')
-            + (indent ? '</span>' : '');
-          const role = g.botMembership === 'none' ? '<span class="muted">-</span>' : '<span class="badge badge-' + g.botMembership + '">' + g.botMembership + '</span>';
-          const activity = g.activityCount || 0;
-          const lastAct = g.lastActivity ? timeAgo(g.lastActivity) : '<span class="muted">-</span>';
-          html += '<tr><td>' + name + '</td><td class="num">' + (g.memberCount || 0) + '</td><td class="num">' + activity + '</td><td>' + lastAct + '</td><td>' + role + '</td></tr>';
+          const nameText = escHtml(g.name)
+          const link = '<a class="group-link" href="/group/' +
+            encodeURIComponent(g.jid) + '">' + nameText + '</a>'
+
+          const name = (indent ? '<span class="indent">' : '') + link +
+            (g.isCommunity ? ' <span class="badge badge-community">community</span>' : '') +
+            (indent ? '</span>' : '')
+
+          const role = g.botMembership === 'none'
+            ? '<span class="muted">-</span>'
+            : '<span class="badge badge-' + escHtml(g.botMembership) + '">' +
+              escHtml(g.botMembership) + '</span>'
+
+          const activity = g.activityCount || 0
+          const lastAct = g.lastActivity ? timeAgo(g.lastActivity) :
+            '<span class="muted">-</span>'
+
+          html += '<tr><td>' + name + '</td><td class="num">' +
+            (g.memberCount || 0) + '</td><td class="num">' +
+            activity + '</td><td>' + lastAct + '</td><td>' + role + '</td></tr>'
         }
 
         for (const g of topLevel) {
-          addRow(g, false);
+          addRow(g, false)
           if (g.isCommunity) {
-            for (const child of (childMap[g.jid] || [])) {
-              addRow(child, true);
-            }
+            for (const child of (childMap[g.jid] || [])) addRow(child, true)
           }
         }
 
-        html += '</tbody></table>';
-        document.getElementById('groups').innerHTML = html;
-      } catch (e) {
-        document.getElementById('groups').innerHTML = '<p class="loading">Failed to load groups</p>';
+        html += '</tbody></table>'
+        document.getElementById('groups').innerHTML = html
+      } catch (error) {
+        document.getElementById('groups').innerHTML =
+          '<p class="loading">Failed to load groups</p>'
       }
     }
 
     function timeAgo(ts) {
-      const seconds = Math.floor(Date.now() / 1000) - ts;
-      if (seconds < 60) return 'just now';
-      const minutes = Math.floor(seconds / 60);
-      if (minutes < 60) return minutes + 'm ago';
-      const hours = Math.floor(minutes / 60);
-      if (hours < 24) return hours + 'h ago';
-      const days = Math.floor(hours / 24);
-      if (days < 30) return days + 'd ago';
-      return Math.floor(days / 30) + 'mo ago';
-    }
-    function escHtml(s) {
-      const d = document.createElement('div');
-      d.textContent = s;
-      return d.innerHTML;
+      const seconds = Math.floor(Date.now() / 1000) - ts
+      if (seconds < 60) return 'just now'
+      const minutes = Math.floor(seconds / 60)
+      if (minutes < 60) return minutes + 'm ago'
+      const hours = Math.floor(minutes / 60)
+      if (hours < 24) return hours + 'h ago'
+      const days = Math.floor(hours / 24)
+      if (days < 30) return days + 'd ago'
+      return Math.floor(days / 30) + 'mo ago'
     }
 
-    loadGroups();
+    document.getElementById('status-filter').addEventListener('change', renderComplaints)
+    document.getElementById('priority-filter').addEventListener('change', renderComplaints)
+    document.getElementById('category-filter').addEventListener('change', renderComplaints)
+    document.getElementById('refresh-btn').addEventListener('click', loadComplaints)
+
+    loadComplaints()
+    loadGroups()
   </script>
 </body>
 </html>
