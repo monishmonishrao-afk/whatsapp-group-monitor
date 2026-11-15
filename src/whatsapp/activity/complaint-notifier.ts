@@ -13,9 +13,10 @@ export async function notifyComplaint(
 ): Promise<void> {
   // Safety switch: do not send unless explicitly enabled.
   if (!config.complaintAutoNotify) {
-    console.info('[Complaint] Automatic WhatsApp notification is disabled.')
-    return
-  }
+  updateComplaintNotification(complaint.id, 'disabled')
+  console.info('[Complaint] Automatic WhatsApp notification is disabled.')
+  return
+}
 
   const message = [
     '🚨 *NEW RESIDENT COMPLAINT*',
