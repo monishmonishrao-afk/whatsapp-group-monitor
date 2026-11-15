@@ -30,4 +30,7 @@ export const config = {
   complaintConfidenceThreshold: Number(
     process.env.COMPLAINT_CONFIDENCE_THRESHOLD || '75'
   ),
+  complaintAutoNotify: process.env.COMPLAINT_AUTO_NOTIFY === 'true',
+
+
 }

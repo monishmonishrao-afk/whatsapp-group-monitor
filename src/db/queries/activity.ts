@@ -133,17 +133,24 @@ export function getGroupUserActivity(groupJid: string, sinceDays: number) {
 }
 
 /** Save a complaint. Returns false if this message was already recorded. */
-export function insertComplaint(complaint: NewComplaint): boolean {
+
+/** Save a complaint. Returns the saved record, or null if it is a duplicate. */
+export function insertComplaint(complaint: NewComplaint): ComplaintRow | null {
   const db = getAccountDb()
 
   try {
-    db.insert(complaints).values(complaint).run()
-    return true
+    const result = db.insert(complaints)
+      .values(complaint)
+      .returning()
+      .get()
+
+    return result ?? null
   } catch (err: any) {
-    if (err?.code === 'SQLITE_CONSTRAINT_UNIQUE') return false
+    if (err?.code === 'SQLITE_CONSTRAINT_UNIQUE') return null
     throw err
   }
 }
+
 
 /** Get the latest complaints for the dashboard. */
 export function getRecentComplaints(limit = 100): ComplaintRow[] {
@@ -166,6 +173,25 @@ export function updateComplaintStatus(
   db.update(complaints)
     .set({
       status,
+      updatedAt: new Date(),
+    })
+    .where(eq(complaints.id, id))
+    .run()
+}
+
+
+/** Update WhatsApp notification delivery status for a complaint. */
+export function updateComplaintNotification(
+  id: number,
+  status: ComplaintRow['notificationStatus'],
+  error: string | null = null,
+): void {
+  const db = getAccountDb()
+
+  db.update(complaints)
+    .set({
+      notificationStatus: status,
+      notificationError: error,
       updatedAt: new Date(),
     })
     .where(eq(complaints.id, id))
