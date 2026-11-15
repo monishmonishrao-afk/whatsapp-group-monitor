@@ -1,21 +1,10 @@
 
 import OpenAI from 'openai'
 import { config } from '../../config.js'
-
-export type ComplaintCategory =
-  | 'plumbing'
-  | 'electrical'
-  | 'housekeeping'
-  | 'security'
-  | 'lift'
-  | 'parking'
-  | 'noise'
-  | 'civil'
-  | 'water_supply'
-  | 'common_area'
-  | 'other'
-
-export type ComplaintPriority = 'low' | 'medium' | 'high' | 'urgent'
+import type {
+  ComplaintCategory,
+  ComplaintPriority,
+} from '../../db/schema.js'
 
 export interface ComplaintClassification {
   isComplaint: boolean
@@ -55,7 +44,11 @@ function getOpenAI(): OpenAI {
   }
 
   if (!openai) {
-    openai = new OpenAI({ apiKey: config.openaiApiKey })
+    openai = new OpenAI({
+      apiKey: config.openaiApiKey,
+      timeout: 30_000,
+      maxRetries: 0,
+    })
   }
 
   return openai
