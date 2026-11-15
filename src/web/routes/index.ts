@@ -84,12 +84,16 @@ export function registerRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid complaint status' })
     }
 
-    updateComplaintStatus(
-      complaintId,
-      status as typeof complaintStatuses[number],
-    )
+    const updated = updateComplaintStatus(
+  complaintId,
+  status as typeof complaintStatuses[number],
+)
 
-    return reply.send({ ok: true })
+if (!updated) {
+  return reply.status(404).send({ error: 'Complaint not found' })
+}
+
+return reply.send({ ok: true })
   })
 
   app.get('/', { preHandler: requireAuth }, async (req, reply) => {

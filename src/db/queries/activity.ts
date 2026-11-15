@@ -132,8 +132,6 @@ export function getGroupUserActivity(groupJid: string, sinceDays: number) {
     .all()
 }
 
-/** Save a complaint. Returns false if this message was already recorded. */
-
 /** Save a complaint. Returns the saved record, or null if it is a duplicate. */
 export function insertComplaint(complaint: NewComplaint): ComplaintRow | null {
   const db = getAccountDb()
@@ -151,7 +149,6 @@ export function insertComplaint(complaint: NewComplaint): ComplaintRow | null {
   }
 }
 
-
 /** Get the latest complaints for the dashboard. */
 export function getRecentComplaints(limit = 100): ComplaintRow[] {
   const db = getAccountDb()
@@ -163,22 +160,23 @@ export function getRecentComplaints(limit = 100): ComplaintRow[] {
     .all()
 }
 
-/** Update a complaint's status. */
+/** Update a complaint's status. Returns true if updated, false if not found. */
 export function updateComplaintStatus(
   id: number,
   status: ComplaintRow['status'],
-): void {
+): boolean {
   const db = getAccountDb()
 
-  db.update(complaints)
+  const result = db.update(complaints)
     .set({
       status,
       updatedAt: new Date(),
     })
     .where(eq(complaints.id, id))
     .run()
-}
 
+  return result.changes > 0
+}
 
 /** Update WhatsApp notification delivery status for a complaint. */
 export function updateComplaintNotification(
