@@ -4,6 +4,7 @@ import { config } from '../../config.js'
 import { detectComplaint } from './complaint-detector.js'
 import { insertComplaint } from '../../db/queries/activity.js'
 import { notifyComplaint } from './complaint-notifier.js'
+import { acknowledgeResident } from './resident-acknowledgement.js'
 
 export interface ProcessableRecord {
   groupJid: string
@@ -53,7 +54,10 @@ export function processRecord(record: ProcessableRecord): void {
         messageId: record.messageId,
       })
 
-      await notifyComplaint(savedComplaint)
+      await Promise.allSettled([
+        notifyComplaint(savedComplaint),
+        acknowledgeResident(savedComplaint),
+      ])
     } catch (error) {
       console.error('[Complaint] Processing failed:', error)
     }
