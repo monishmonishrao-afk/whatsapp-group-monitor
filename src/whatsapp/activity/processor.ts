@@ -5,18 +5,36 @@ import { detectComplaint } from './complaint-detector.js'
 import { insertComplaint } from '../../db/queries/activity.js'
 import { notifyComplaint } from './complaint-notifier.js'
 import { acknowledgeResident } from './resident-acknowledgement.js'
+import { handleTeamReply } from './team-reply-handler.js'
 
 export interface ProcessableRecord {
   groupJid: string
   userJid: string
   messageId: string
+  parentId: string | null
   eventType: ActivityEventType
   metadata: Record<string, unknown> | null
   timestamp: number
 }
 
-/** Process a single activity record for complaint detection. */
+/** Process a single activity record. */
 export function processRecord(record: ProcessableRecord): void {
+  // Handle replies and reactions in the internal team group.
+  if (record.groupJid === config.internalGroupJid) {
+    void handleTeamReply(
+      record.groupJid,
+      record.userJid,
+      record.parentId,
+      record.eventType,
+      record.metadata,
+    ).catch(error => {
+      console.error('[Complaint] Team reply handling failed:', error)
+    })
+
+    return
+  }
+
+  // Existing resident complaint detection.
   if (record.groupJid !== config.residentsGroupJid) return
   if (record.eventType !== 'message') return
 

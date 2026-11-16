@@ -1,7 +1,10 @@
 
 import { config } from '../../config.js'
 import { getSock } from '../client.js'
-import { updateComplaintNotification } from '../../db/queries/activity.js'
+import {
+  updateComplaintNotification,
+  updateComplaintInternalMessageId,
+} from '../../db/queries/activity.js'
 import type { ComplaintRow } from '../../db/schema.js'
 
 /**
@@ -13,10 +16,10 @@ export async function notifyComplaint(
 ): Promise<void> {
   // Safety switch: do not send unless explicitly enabled.
   if (!config.complaintAutoNotify) {
-  updateComplaintNotification(complaint.id, 'disabled')
-  console.info('[Complaint] Automatic WhatsApp notification is disabled.')
-  return
-}
+    updateComplaintNotification(complaint.id, 'disabled')
+    console.info('[Complaint] Automatic WhatsApp notification is disabled.')
+    return
+  }
 
   const message = [
     '🚨 *NEW RESIDENT COMPLAINT*',
@@ -36,13 +39,32 @@ export async function notifyComplaint(
   try {
     const sock = getSock()
 
-    await sock.sendMessage(config.internalGroupJid, {
-      text: message,
-    })
+    // Send notification and capture its WhatsApp message ID.
+    const sentMessage = await sock.sendMessage(
+      config.internalGroupJid,
+      { text: message },
+    )
+
+    const internalMessageId = sentMessage?.key?.id
+
+    if (!internalMessageId) {
+      throw new Error('WhatsApp notification sent but message ID was not returned')
+    }
+
+    // Link the internal notification to the original complaint.
+    updateComplaintInternalMessageId(
+      complaint.id,
+      internalMessageId,
+    )
 
     updateComplaintNotification(complaint.id, 'sent')
 
-    console.info('[Complaint] Internal WhatsApp notification sent:', complaint.id)
+    console.info(
+      '[Complaint] Internal WhatsApp notification sent:',
+      complaint.id,
+      'Message ID:',
+      internalMessageId,
+    )
   } catch (error) {
     const errorMessage = error instanceof Error
       ? error.message.slice(0, 500)

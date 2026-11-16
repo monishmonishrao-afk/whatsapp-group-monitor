@@ -146,6 +146,7 @@ export const complaints = sqliteTable(
     }).notNull().default('pending'),
 
     notificationError: text('notification_error'),
+    internalMessageId: text('internal_message_id'),
 
     createdAt: integer('created_at', {
       mode: 'timestamp_ms',

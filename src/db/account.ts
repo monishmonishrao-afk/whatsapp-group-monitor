@@ -1,3 +1,4 @@
+
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { resolve } from 'path'
@@ -96,58 +97,84 @@ export function initAccountDb(phone: string) {
       created_at INTEGER NOT NULL
     );
 
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_group_message ON group_activity_log(group_jid, message_id);
-    CREATE INDEX IF NOT EXISTS idx_activity_group_ts ON group_activity_log(group_jid, timestamp);
-    CREATE INDEX IF NOT EXISTS idx_activity_user_group ON group_activity_log(user_jid, group_jid);
-    CREATE INDEX IF NOT EXISTS idx_activity_parent ON group_activity_log(parent_id);
-    
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_group_message
+    ON group_activity_log(group_jid, message_id);
+
+    CREATE INDEX IF NOT EXISTS idx_activity_group_ts
+    ON group_activity_log(group_jid, timestamp);
+
+    CREATE INDEX IF NOT EXISTS idx_activity_user_group
+    ON group_activity_log(user_jid, group_jid);
+
+    CREATE INDEX IF NOT EXISTS idx_activity_parent
+    ON group_activity_log(parent_id);
+
     CREATE TABLE IF NOT EXISTS complaints (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  source_group_jid TEXT NOT NULL,
-  source_message_id TEXT NOT NULL,
-  resident_jid TEXT NOT NULL,
-  source_timestamp INTEGER NOT NULL,
-  message_text TEXT NOT NULL,
-  category TEXT NOT NULL,
-  priority TEXT NOT NULL,
-  summary TEXT NOT NULL,
-  flat_number TEXT,
-  confidence INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'open',
-  notification_status TEXT NOT NULL DEFAULT 'pending',
-  notification_error TEXT,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
-);
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_group_jid TEXT NOT NULL,
+      source_message_id TEXT NOT NULL,
+      resident_jid TEXT NOT NULL,
+      source_timestamp INTEGER NOT NULL,
+      message_text TEXT NOT NULL,
+      category TEXT NOT NULL,
+      priority TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      flat_number TEXT,
+      confidence INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      notification_status TEXT NOT NULL DEFAULT 'pending',
+      notification_error TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_complaints_source
-ON complaints(source_group_jid, source_message_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_complaints_source
+    ON complaints(source_group_jid, source_message_id);
 
-CREATE INDEX IF NOT EXISTS idx_complaints_status
-ON complaints(status);
+    CREATE INDEX IF NOT EXISTS idx_complaints_status
+    ON complaints(status);
 
-CREATE INDEX IF NOT EXISTS idx_complaints_created
-ON complaints(created_at);
+    CREATE INDEX IF NOT EXISTS idx_complaints_created
+    ON complaints(created_at);
   `)
 
   // Migrations: drop columns that are no longer needed
-  // SQLite doesn't support DROP COLUMN before 3.35.0, so we use a safe approach
   const columns = sqlite.pragma('table_info(groups)') as { name: string }[]
   const groupCols = columns.map(c => c.name)
+
   if (groupCols.includes('syncing')) {
     sqlite.exec('ALTER TABLE groups DROP COLUMN syncing')
   }
+
   if (groupCols.includes('synced_at')) {
     sqlite.exec('ALTER TABLE groups DROP COLUMN synced_at')
   }
-  const actCols = (sqlite.pragma('table_info(group_activity_log)') as { name: string }[]).map(c => c.name)
+
+  const actCols = (
+    sqlite.pragma('table_info(group_activity_log)') as { name: string }[]
+  ).map(c => c.name)
+
   if (actCols.includes('processed')) {
     sqlite.exec('ALTER TABLE group_activity_log DROP COLUMN processed')
   }
 
-  const memberCols = (sqlite.pragma('table_info(group_members)') as { name: string }[]).map(c => c.name)
+  const memberCols = (
+    sqlite.pragma('table_info(group_members)') as { name: string }[]
+  ).map(c => c.name)
+
   if (!memberCols.includes('last_read_at')) {
     sqlite.exec('ALTER TABLE group_members ADD COLUMN last_read_at TEXT')
+  }
+
+  // Migration: add internal notification message ID to complaints
+  const complaintCols = (
+    sqlite.pragma('table_info(complaints)') as { name: string }[]
+  ).map(c => c.name)
+
+  if (!complaintCols.includes('internal_message_id')) {
+    sqlite.exec(
+      'ALTER TABLE complaints ADD COLUMN internal_message_id TEXT'
+    )
   }
 
   currentPhone = phone
@@ -166,6 +193,7 @@ export function replaceAccountDbFile(phone: string, srcPath: string) {
   for (const ext of ['', '-wal', '-shm']) {
     try { unlinkSync(targetPath + ext) } catch { /* ignore */ }
   }
+
   copyFileSync(srcPath, targetPath)
 
   if (wasCurrentPhone) initAccountDb(phone)
@@ -178,6 +206,7 @@ export function closeAccountDb() {
     } catch {
       // ignore close errors
     }
+
     db = null
     accountSqlite = null
     logger.info({ phone: currentPhone }, 'Account database closed')

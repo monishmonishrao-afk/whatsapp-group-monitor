@@ -195,3 +195,31 @@ export function updateComplaintNotification(
     .where(eq(complaints.id, id))
     .run()
 }
+
+/** Save the internal WhatsApp notification message ID for a complaint. */
+export function updateComplaintInternalMessageId(
+  id: number,
+  messageId: string,
+): void {
+  const db = getAccountDb()
+
+  db.update(complaints)
+    .set({
+      internalMessageId: messageId,
+      updatedAt: new Date(),
+    })
+    .where(eq(complaints.id, id))
+    .run()
+}
+
+/** Find a complaint using its internal WhatsApp notification message ID. */
+export function getComplaintByInternalMessageId(
+  messageId: string,
+): ComplaintRow | undefined {
+  const db = getAccountDb()
+
+  return db.select()
+    .from(complaints)
+    .where(eq(complaints.internalMessageId, messageId))
+    .get()
+}
