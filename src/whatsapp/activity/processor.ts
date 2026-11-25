@@ -4,7 +4,6 @@ import { config } from '../../config.js'
 import { detectComplaint } from './complaint-detector.js'
 import { insertComplaint } from '../../db/queries/activity.js'
 import { notifyComplaint } from './complaint-notifier.js'
-import { acknowledgeResident } from './resident-acknowledgement.js'
 import { handleTeamReply } from './team-reply-handler.js'
 
 export interface ProcessableRecord {
@@ -72,10 +71,9 @@ export function processRecord(record: ProcessableRecord): void {
         messageId: record.messageId,
       })
 
-      await Promise.allSettled([
-        notifyComplaint(savedComplaint),
-        acknowledgeResident(savedComplaint),
-      ])
+      // Internal FM notification remains active.
+      // Automatic public resident-group acknowledgement is disabled.
+      await notifyComplaint(savedComplaint)
     } catch (error) {
       console.error('[Complaint] Processing failed:', error)
     }
